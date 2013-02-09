@@ -23,7 +23,7 @@ public class FinxController {
 		trayApp = new TrayApplication(setup.get_folder_path());
 		sysTray = SystemTray.getSystemTray();
 		add_to_tray();
-		ServerFacingThread serverFacingThread = new ServerFacingThread();
+		ServerFacingThread serverFacingThread = new ServerFacingThread(setup.get_folder_path());
 		keep_watching_FinxFolder();
 		
 		/* Do not place any code in this function beyond this point as it is unreachable */
