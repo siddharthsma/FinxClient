@@ -1,5 +1,6 @@
 package finxClient;
 
+import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
@@ -9,7 +10,6 @@ import java.util.Date;
 
 public class FileTreeWalker extends SimpleFileVisitor<Path>{
 
-	private SimpleDateFormat dateFormat;
 	private Date modDateofFile;
 	private Date lastPushDate;
 	private ServerFacingThread myServerThread;
@@ -17,7 +17,6 @@ public class FileTreeWalker extends SimpleFileVisitor<Path>{
 	public FileTreeWalker(Date lastPushDate, ServerFacingThread myServerThread) {
 		this.myServerThread = myServerThread;
 		this.lastPushDate = lastPushDate;
-		dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		
 	}
 	
@@ -26,7 +25,11 @@ public class FileTreeWalker extends SimpleFileVisitor<Path>{
 		modDateofFile = new Date(attr.lastModifiedTime().toMillis()); 
 		if (modDateofFile.after(lastPushDate)) {
 			// need to push that file to the server.
-			myServerThread.sendFile(filePath.toFile());
+			try {
+				myServerThread.sendFile(filePath.toString());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 
 		}
 		return FileVisitResult.CONTINUE;

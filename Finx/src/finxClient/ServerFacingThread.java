@@ -1,14 +1,8 @@
 package finxClient;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -18,9 +12,9 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ServerFacingThread extends Thread{
 
@@ -31,32 +25,34 @@ public class ServerFacingThread extends Thread{
 	private InputStreamReader protocolInputReader;
 	private InetAddress ip;
 	private StringBuilder MACaddr; 
-	//private SimpleDateFormat dateFormat;
 	private Date lastPushDateTime;
-	private Path FinxFolderPath;
-	private OutputStream os;
-	private DataOutputStream dos;
-	//private FileInputStream fis;
-	//private BufferedInputStream bis;
-	//private DataInputStream dis;
+	private Path FinxFolderPath; 
 	
+	private static final int NTHREDS = 20;
 	
+	private ExecutorService executor;
+
+
 	public ServerFacingThread(String FinxFolderStringPath) {
-		connect_to_Server();
-		setOutputStream();
-		setInputStream();
+		while (myClient == null) {
+			try {
+				sleep(5);
+				connect_to_Server();
+			} catch (InterruptedException e) { }
+		}
+		setOutputProtocolStream();
+		setInputProtocolStream();
 		setPath(FinxFolderStringPath);
+		setExecutor();
 		start();
 	}
-	
+
 	public void run() {
 		authenticate();
 		receiveLastPushTime();
-		setFileDeliveryStream();
 		walkFileTreeAndPush();
-		
 	}
-	
+
 	public void walkFileTreeAndPush() {
 		try {
 			Files.walkFileTree(FinxFolderPath, new FileTreeWalker(lastPushDateTime, this));
@@ -64,21 +60,33 @@ public class ServerFacingThread extends Thread{
 			e.printStackTrace();
 		}
 	}
-	
-	public void sendFile(File myFile) {      
-	    //Sending file name and file size to the server  
-		 byte[] mybytearray = new byte[(int) myFile.length()];  
-	     try {
-			dos.writeUTF(myFile.getName());
-			dos.writeLong(mybytearray.length);     
-		    dos.write(mybytearray, 0, mybytearray.length);     
-		    dos.flush();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}         
+
+	public void sendFile(String myFilePath) throws IOException {   
+		// ask the Executor to allocate a Thread for sending the file
+		sendTell("push:" + myFilePath);
+		executor.execute(new FileWorker(myFilePath));
+		// sendfile
+		
+		/*System.out.println("Path is: " + myFilePath);
+		File myFile = new File (myFilePath);
+		
+		sendTell("push " + myFile.getName());
+		
+		byte [] mybytearray  = new byte [(int)myFile.length()];
+		FileInputStream fis = new FileInputStream(myFile);
+		BufferedInputStream bis = new BufferedInputStream(fis);
+		bis.read(mybytearray,0,mybytearray.length);
+		OutputStream os = myClient.getOutputStream();
+		System.out.println("Sending...");
+		os.write(mybytearray,0,mybytearray.length);
+		os.flush();
+		//myClient.close();
+		System.out.println("Sent ! Or so it should be ...");*/
 	}
-	
+
 	public void receiveLastPushTime() {
+		// first send a request to the server
+		sendRequest("lastpushtime");
 		try {
 			String dateTimeString = protocolInput.readLine();
 			//dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -87,16 +95,15 @@ public class ServerFacingThread extends Thread{
 				 * thereby effectively forcing a Push
 				 */
 				lastPushDateTime = new Date(0);
-				System.out.println(lastPushDateTime.toString());
 			} else {
 				lastPushDateTime = new Date(Integer.parseInt(dateTimeString));
-				//lastPushDateTime = dateFormat.parse(dateTimeString);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}	
+		System.out.println("Push time set as: " + lastPushDateTime.toString());
 	}
-	
+
 	public void authenticate() {
 		/* Client sends his/her MAC address,
 		 * and receives an authentication message from the Server */
@@ -104,47 +111,54 @@ public class ServerFacingThread extends Thread{
 		try {
 			if(!protocolInput.readLine().equals("Authenticated")) {
 				// dont need to worry about this yet
+				System.out.println("Failed Authentication");
+			} else { 
+				System.out.println("Passed Authentication");
 			}
+
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void connect_to_Server() {
 		try {
-	           myClient = new Socket(serverAddress, 9396);
-	    }
-	    catch (IOException e) {
-	        System.out.println(e);
-	    }
+			myClient = new Socket(serverAddress, 9390);
+		}
+		catch (IOException e) {
+			System.out.println(e);
+		}
 	}
-	
-	public void setOutputStream() {
+
+	public void setOutputProtocolStream() {
 		try {
 			protocolOutput = new PrintStream(myClient.getOutputStream());
-	    }
-	    catch (IOException e) {
-	        System.out.println(e);
-	    }
+		}
+		catch (IOException e) {
+			System.out.println(e);
+		}
 	}
-	
-	public void setInputStream() {
+
+	public void setInputProtocolStream() {
 		try {
 			protocolInputReader = new InputStreamReader(myClient.getInputStream());
 			protocolInput = new BufferedReader(protocolInputReader);
-	    }
-	    catch (IOException e) {
-	        System.out.println(e);
-	    }
+		}
+		catch (IOException e) {
+			System.out.println(e);
+		}
+	}
+
+	public void sendRequest(String request) {
+		protocolOutput.println(request);
 	}
 	
-	public void setFileDeliveryStream() {
-		 try {
-				os = myClient.getOutputStream();
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}  
-	     dos = new DataOutputStream(os);  
+	public void sendTell(String tell) {
+		protocolOutput.println(tell);
+	}
+	
+	public void setExecutor() {
+		executor = Executors.newFixedThreadPool(NTHREDS);
 	}
 	
 	public String getMACAddress() {
@@ -152,7 +166,7 @@ public class ServerFacingThread extends Thread{
 			ip = InetAddress.getLocalHost();
 			NetworkInterface network = NetworkInterface.getByInetAddress(ip);
 			byte[] mac = network.getHardwareAddress();
-	 
+
 			MACaddr = new StringBuilder();
 			for (int i = 0; i < mac.length; i++) {
 				MACaddr.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? "" : ""));		
@@ -164,11 +178,15 @@ public class ServerFacingThread extends Thread{
 		}
 		return MACaddr.toString();
 	}
-	
+
 	public void setPath(String Path) {
 		FinxFolderPath = Paths.get(Path);
 	}
 	
+	public Socket getSocket() {
+		return myClient;
+	}
+
 }
-	
+
 
