@@ -3,9 +3,6 @@ package finxClient;
 
 import java.awt.AWTException;
 import java.awt.SystemTray;
-import java.io.File;
-import java.io.IOException;
-
 import net.contentobjects.jnotify.*;
 
 public class FinxController {

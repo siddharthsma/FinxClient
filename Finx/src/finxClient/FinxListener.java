@@ -4,12 +4,10 @@ import net.contentobjects.jnotify.JNotifyListener;
 
 public class FinxListener implements JNotifyListener{
 	
-	private TrayApplication trayApp;
 	private String notification_type;
 
 	public FinxListener(TrayApplication trayApp) {
 		super();
-		this.trayApp = trayApp;
 	}
 	
 	public void fileRenamed(int wd, String rootPath, String oldName,

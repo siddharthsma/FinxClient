@@ -7,7 +7,6 @@ import java.io.IOException;
 public class SetupFinxEnv {
 	
 	private String finx_folder_path;
-	private String base_finx_folder_path = "FinxFolder";
 	
 	public SetupFinxEnv() {
 		finx_folder_path = set_folder_path_depending_on_OS();

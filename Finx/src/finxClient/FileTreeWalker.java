@@ -5,7 +5,6 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class FileTreeWalker extends SimpleFileVisitor<Path>{
@@ -30,7 +29,7 @@ public class FileTreeWalker extends SimpleFileVisitor<Path>{
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-
+			System.out.println("Past sendFile");
 		}
 		return FileVisitResult.CONTINUE;
 	}
