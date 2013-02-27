@@ -1,5 +1,6 @@
 package finxClient;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
@@ -25,7 +26,10 @@ public class FileTreeWalker extends SimpleFileVisitor<Path>{
 		if (modDateofFile.after(lastPushDate)) {
 			// need to push that file to the server.
 			try {
-				myServerThread.sendFile(filePath.toString());
+				File aFile = new File(filePath.toString());
+				if (aFile.length() > 0) {
+					myServerThread.sendFile(filePath.toString());
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

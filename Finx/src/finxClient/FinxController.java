@@ -10,6 +10,7 @@ public class FinxController {
 	private static TrayApplication trayApp;
 	private static SetupFinxEnv setup;
 	private static SystemTray sysTray;
+	private static ServerFacingThread serverFacingThread;
 
 	public static void main(String[] args) {
 		
@@ -20,7 +21,7 @@ public class FinxController {
 		trayApp = new TrayApplication(setup.get_folder_path());
 		sysTray = SystemTray.getSystemTray();
 		add_to_tray();
-		ServerFacingThread serverFacingThread = new ServerFacingThread(setup.get_folder_path());
+		serverFacingThread = new ServerFacingThread(setup.get_folder_path());
 		keep_watching_FinxFolder();
 		
 		/* Do not place any code in this function beyond this point as it is unreachable */
@@ -57,7 +58,7 @@ public class FinxController {
 	    boolean watchSubtree = true;
 
 	    // add actual watch
-	    int watchID = JNotify.addWatch(setup.get_folder_path(), mask, watchSubtree, new FinxListener(trayApp));
+	    int watchID = JNotify.addWatch(setup.get_folder_path(), mask, watchSubtree, new FinxListener(trayApp, serverFacingThread));
 
 	    // sleep a little, the application will exit if you
 	    // don't (watching is asynchronous), depending on your

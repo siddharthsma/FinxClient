@@ -52,8 +52,8 @@ public class ServerFacingThread extends Thread{
 	public void run() {
 		authenticate();
 		receiveLastPushTime();
-		//walkFileTreeAndPush();
-		try {
+		walkFileTreeAndPush();
+		/*try {
 			sendFile("/Users/sameerambegaonkar/Desktop/FinxFolder/Programming.in.Objective-C.4th.Edition.pdf");
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -62,7 +62,7 @@ public class ServerFacingThread extends Thread{
 			sendFile("/Users/sameerambegaonkar/Desktop/FinxFolder/Previous statements.pdf");
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
+		}*/
 
 		System.out.println("Managed to get here");
 	}
@@ -78,14 +78,19 @@ public class ServerFacingThread extends Thread{
 	public void sendFile(String myFilePath) throws IOException {   
 
 		File myFile = new File(myFilePath);  
-		String[] filePathSplit = myFilePath.split("FinxFolder/");
-		//protocolOutput.println("push#" + filePathSplit[1] + "#" + Long.toString(myFile.length()) );
+		String[] filePathSplit = myFile.getPath().split("FinxFolder/");
+		
+		//Send protocol push message with the file path
 		protocolOutput.println("push#" + filePathSplit[1] );
+		
+		//Set Object Streams on the file transfer socket
 		ObjectInputStream ois = new ObjectInputStream(myClientFiles.getInputStream());  
 		ObjectOutputStream oos = new ObjectOutputStream(myClientFiles.getOutputStream());  
 
+		// Write the name of the file
 		oos.writeObject(myFile.getName());  
 
+		// Write the rest of the file
 		FileInputStream fis = new FileInputStream(myFile);  
 		byte [] buffer = new byte[BUFFER_SIZE];  
 		Integer bytesRead = 0;  
