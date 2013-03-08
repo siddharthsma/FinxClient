@@ -3,6 +3,7 @@ package finxClient;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -18,7 +19,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
-
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 
 
 public class ServerFacingThread extends Thread{
@@ -26,17 +29,24 @@ public class ServerFacingThread extends Thread{
 	private Socket myClientProtocols;
 	private Socket myClientFiles;
 	private String serverAddress = "127.0.0.1";
-	private PrintStream protocolOutput;
-	private BufferedReader protocolInput;
+	public PrintStream protocolOutput;
+	public BufferedReader protocolInput;
 	private InputStreamReader protocolInputReader;
 	private InetAddress ip;
 	private StringBuilder MACaddr; 
 	private Date lastPushDateTime;
+	private String FinxFolderStringPath;
 	private Path FinxFolderPath; 
 
+	private ServerCommandWatcher serverCommands;
+	// Hashes that store
+	public HashMap<String, File> push_map = new HashMap<String, File>();
+	public HashSet<String> fetch_map = new HashSet<String>();
+	
 	public static final int BUFFER_SIZE = 100;  
 
 	public ServerFacingThread(String FinxFolderStringPath) {
+		this.FinxFolderStringPath = FinxFolderStringPath;
 		while (myClientProtocols == null) {
 			try {
 				sleep(10000);
@@ -52,29 +62,55 @@ public class ServerFacingThread extends Thread{
 	public void run() {
 		authenticate();
 		receiveLastPushTime();
-		walkFileTreeAndPush();
-		/*try {
-			sendFile("/Users/sameerambegaonkar/Desktop/FinxFolder/Programming.in.Objective-C.4th.Edition.pdf");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
-			sendFile("/Users/sameerambegaonkar/Desktop/FinxFolder/Previous statements.pdf");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}*/
-
+		walkFileTree();
+		serverCommands = new ServerCommandWatcher(this);
+		pushToServer();
 		System.out.println("Managed to get here");
 	}
 
-	public void walkFileTreeAndPush() {
+	public void walkFileTree() {
 		try {
 			Files.walkFileTree(FinxFolderPath, new FileTreeWalker(lastPushDateTime, this));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
+	
+	public void dealWithFetchRequest(String relFilePath) {
+		// Get the file name
+		String[] pathSplit = relFilePath.split("/");
+		String fileName = pathSplit[pathSplit.length-1];
+		
+		if (push_map.containsKey(fileName)) {
+			/* we must deny fetch request since it would overwrite local
+			 * changes
+			 */
+		}
+		else {
+			/* accept fetch request
+			 */
+			fetch_map.add(FinxFolderStringPath + relFilePath);
+			protocolOutput.println("fetch#" + relFilePath);
+			try {
+				receiveFile(relFilePath);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
 
+	public void pushToServer() {
+		Iterator pushIterator = push_map.keySet().iterator();
+		while (pushIterator.hasNext()) {
+	        try {
+				sendFile(push_map.get(pushIterator.next()).getPath());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+	    }
+	}
+	
 	public void sendFile(String myFilePath) throws IOException {   
 
 		File myFile = new File(myFilePath);  
@@ -83,8 +119,7 @@ public class ServerFacingThread extends Thread{
 		//Send protocol push message with the file path
 		protocolOutput.println("push#" + filePathSplit[1] );
 		
-		//Set Object Streams on the file transfer socket
-		ObjectInputStream ois = new ObjectInputStream(myClientFiles.getInputStream());  
+		//Set Output Object Stream on the file transfer socket
 		ObjectOutputStream oos = new ObjectOutputStream(myClientFiles.getOutputStream());  
 
 		// Write the name of the file
@@ -99,6 +134,65 @@ public class ServerFacingThread extends Thread{
 			oos.writeObject(bytesRead);  
 			oos.writeObject(Arrays.copyOf(buffer, buffer.length));  
 		}   
+	}
+	
+	public void receiveFile(String relFilePath) throws Exception {
+
+		// Set up Input Object Stream on File transfer socket  
+		ObjectInputStream ois = new ObjectInputStream(myClientFiles.getInputStream()); 
+		
+		// Set up the FileOutput Stream and byte array buffer
+		FileOutputStream fos = null;  
+		byte [] buffer = new byte[BUFFER_SIZE];  
+
+		// Create directories indicated in the relFilePath
+		String[] directories = relFilePath.split("/");
+		String relDirPath = "";
+		for (int i=0; i < directories.length - 1; i++) {
+			if (i==0) {
+				relDirPath = directories[i];
+			} else {
+				relDirPath += "/" + directories[i];
+			}
+		}
+		System.out.println(FinxFolderStringPath + relDirPath);
+		File theFile = new File(FinxFolderStringPath + relDirPath);
+		theFile.mkdirs();
+		
+		// 1. Read file name.  
+		Object o = ois.readObject();  
+
+		if (o instanceof String) {  
+			fos = new FileOutputStream(FinxFolderStringPath + relFilePath);  
+		} else {  
+			throwException("Something is wrong");  
+		}  
+
+		// 2. Read file to the end.  
+		Integer bytesRead = 0;  
+
+		do {  
+			o = ois.readObject();  
+
+			if (!(o instanceof Integer)) {  
+				throwException("Something is wrong");  
+			}  
+
+			bytesRead = (Integer)o;  
+
+			o = ois.readObject();  
+
+			if (!(o instanceof byte[])) {  
+				throwException("Something is wrong");  
+			}  
+
+			buffer = (byte[])o;  
+
+			// 3. Write data to output file.  
+			fos.write(buffer, 0, bytesRead);  
+		} while (bytesRead == BUFFER_SIZE);  
+		
+		fos.close();  
 	}
 
 	public void receiveLastPushTime() {
@@ -195,6 +289,10 @@ public class ServerFacingThread extends Thread{
 	public void setPath(String Path) {
 		FinxFolderPath = Paths.get(Path);
 	}
+	
+	public static void throwException(String message) throws Exception {  
+		throw new Exception(message);  
+	}  
 
 
 }

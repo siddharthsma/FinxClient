@@ -1,5 +1,6 @@
 package finxClient;
 
+import java.io.File;
 import java.io.IOException;
 
 import net.contentobjects.jnotify.JNotifyListener;
@@ -22,10 +23,14 @@ public class FinxListener implements JNotifyListener{
 
 	public void fileModified(int wd, String rootPath, String name) {
 		notification_type = "MODIFIED";
-		try {
-			serverFacingThread.sendFile(rootPath + "/" + name);
-		} catch (IOException e) {
-			e.printStackTrace();
+		String filePath = rootPath + name;
+		
+		if (!serverFacingThread.fetch_map.contains(filePath)) {
+			try {
+				serverFacingThread.sendFile(filePath);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}	
 		}
 		Notifier.generateNotification(notification_type, rootPath, name, name);
 	}
@@ -37,11 +42,20 @@ public class FinxListener implements JNotifyListener{
 
 	public void fileCreated(int wd, String rootPath, String name) {
 		notification_type = "CREATED";
-		try {
-			serverFacingThread.sendFile(rootPath + "/" + name);
-		} catch (IOException e) {
-			e.printStackTrace();
+		String filePath = rootPath + name;
+		System.out.println("The listener path is: " + filePath);
+		File theFile = new File(rootPath + name);
+		if (theFile.isFile()) {
+			if (!serverFacingThread.fetch_map.contains(filePath)) {
+				try {
+					serverFacingThread.sendFile(filePath);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}	
+			}
 		}
+		
+		
 		Notifier.generateNotification(notification_type, rootPath, name, name);
 	}
 

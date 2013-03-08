@@ -19,7 +19,7 @@ public class SetupFinxEnv {
 			//some path - gotta find out
 		} 
 		else if (isMac()) {
-			folder_path = "/Users/sameerambegaonkar/Desktop/FinxFolder";
+			folder_path = "/Users/sameerambegaonkar/Desktop/FinxFolder/";
 		}
 		return folder_path;
 	}

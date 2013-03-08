@@ -24,16 +24,11 @@ public class FileTreeWalker extends SimpleFileVisitor<Path>{
 		
 		modDateofFile = new Date(attr.lastModifiedTime().toMillis()); 
 		if (modDateofFile.after(lastPushDate)) {
-			// need to push that file to the server.
-			try {
-				File aFile = new File(filePath.toString());
-				if (aFile.length() > 0) {
-					myServerThread.sendFile(filePath.toString());
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
+			File aFile = new File(filePath.toString());
+			if (aFile.length() > 0) {
+				//myServerThread.sendFile(filePath.toString());
+				myServerThread.push_map.put(aFile.getName(), aFile);
 			}
-			System.out.println("Past sendFile");
 		}
 		return FileVisitResult.CONTINUE;
 	}

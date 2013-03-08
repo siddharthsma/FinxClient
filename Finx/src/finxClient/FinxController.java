@@ -3,6 +3,7 @@ package finxClient;
 
 import java.awt.AWTException;
 import java.awt.SystemTray;
+
 import net.contentobjects.jnotify.*;
 
 public class FinxController {
@@ -44,10 +45,7 @@ public class FinxController {
 		}
 	}
 	
-	//JNotify Stuff
-	
-	public static void watch_folder() throws Exception{
-	    // watch mask, specify events you care about,
+	public static void watch_folder() throws Exception{		  // watch mask, specify events you care about,
 	    // or JNotify.FILE_ANY for all events.
 	    int mask = JNotify.FILE_CREATED  | 
 	               JNotify.FILE_DELETED  | 
@@ -69,7 +67,6 @@ public class FinxController {
 	    if (!res) {
 	       //invalid watch ID specified.
 	    }
-	  }
-	
+	}
 
 }
